@@ -22,19 +22,21 @@ module sccb_config(
     // ---------------------------------------------------------
     reg [7:0] reg_idx = 0;      // ตัวนับว่าส่งไปกี่คำสั่งแล้ว
     reg [15:0] reg_data;        // [15:8] = Register Address, [7:0] = Data
-    wire [7:0] TOTAL_REGS = 5;  // จำนวนคำสั่งทั้งหมด
+    wire [7:0] TOTAL_REGS = 8; // CHANGED from 5 to 8
 
     always @(reg_idx) begin
-        case(reg_idx)
-            // โครงสร้าง: 16'h[Reg_Addr][Data]
-            0: reg_data = 16'h1280; // COM7 (0x12) : 0x80 = RESET กล้องทั้งหมด
-            1: reg_data = 16'h1204; // COM7 (0x12) : 0x04 = ตั้งเป็นโหมด RGB, ขนาด VGA (640x480)
-            2: reg_data = 16'h8C00; // RGB444 (0x8C): 0x00 = ปิดโหมด RGB444
-            3: reg_data = 16'h40D0; // COM15 (0x40): 0xD0 = RGB565 เต็มสเกล
-            4: reg_data = 16'h3A04; // TSLB (0x3A) : 0x04 = เรียงลำดับสี
-            default: reg_data = 16'hFFFF; // ค่าสิ้นสุด
-        endcase
-    end
+    case(reg_idx)
+        0: reg_data = 16'h1280; // COM7: RESET กล้องทั้งหมด
+        1: reg_data = 16'h1101; // CLKRC: Enable clock prescaler
+        2: reg_data = 16'h6B4A; // DBLV: Stabilize PLL clock
+        3: reg_data = 16'h1204; // COM7: ตั้งเป็นโหมด RGB
+        4: reg_data = 16'h8C00; // RGB444: ปิดโหมด RGB444
+        5: reg_data = 16'h40D0; // COM15: RGB565 เต็มสเกล
+        6: reg_data = 16'h3A04; // TSLB: เรียงลำดับสี
+        7: reg_data = 16'hB084; // Magic Register: แก้ปัญหาสีสลับและแถบดำ
+        default: reg_data = 16'hFFFF;
+    endcase
+end
 
     // ---------------------------------------------------------
     // 3. I2C/SCCB State Machine (ตัวส่งสัญญาณ)
@@ -45,7 +47,7 @@ module sccb_config(
     reg sioc_reg = 1;
     reg siod_reg = 1;
     reg siod_out_en = 1;        // 1 = FPGA ส่ง, 0 = FPGA รอรับ ACK
-    
+    reg [7:0] delay_cnt = 0; // NEW: Timer for the 1ms delay
     wire [7:0] DEV_ADDR = 8'h42; // Device ID ของ OV7670 สำหรับการ "เขียน"
 
     assign sioc = sioc_reg;
@@ -55,11 +57,16 @@ module sccb_config(
         case (state)
             0: begin // IDLE: รอเตรียมส่งข้อมูล
                 if (reg_idx < TOTAL_REGS) begin
+                    // NEW: If we just sent command 0 (Reset), wait 1ms before sending command 1
+                if (reg_idx == 1 && delay_cnt < 100) begin
+                    delay_cnt <= delay_cnt + 1;
+                end else begin
                     shift_reg <= {DEV_ADDR, reg_data[15:8], reg_data[7:0]};
                     siod_out_en <= 1;
                     sioc_reg <= 1;
                     siod_reg <= 1;
                     state <= 1;
+                end
                 end
             end
             1: begin // START Condition

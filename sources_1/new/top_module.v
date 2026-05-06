@@ -18,18 +18,19 @@ module top_module(
     output vga_hsync, vga_vsync
 );
     // --- State Definition ---
-    parameter S_INIT   = 2'b00;
-    parameter S_NORMAL = 2'b01;
-    parameter S_FILTER = 2'b10;
+    parameter S_NORMAL   = 2'b00;
+    parameter S_GREY = 2'b01;
+    parameter S_INVERSION = 2'b10;
+    parameter S_CISOLATION = 2'b11;
     
-    reg [1:0] current_state = S_INIT;
+    reg [1:0] current_state = S_NORMAL;
     
     // --- Signals ---
     wire clk_25m, clk_24m;
     wire [16:0] frame_addr;
-    wire [7:0] pixel_8bit; 
+    wire [11:0] pixel_12bit; 
     wire [17:0] capture_addr;
-    wire [7:0] capture_data;
+    wire [11:0] capture_data;
     wire capture_we;
     
     // สัญญาณสีที่จะส่งออก VGA จริงๆ
@@ -56,7 +57,7 @@ module top_module(
 
     wire [3:0] raw_r, raw_g, raw_b;
     vga_640x320_display vga_inst (
-        .clk_25m(clk_25m), .pixel_in(pixel_8bit),
+        .clk_25m(clk_25m), .pixel_in(pixel_12bit),
         .hsync(vga_hsync), .vsync(vga_vsync),
         .vga_r(raw_r), .vga_g(raw_g), .vga_b(raw_b),
         .frame_addr(frame_addr)
@@ -65,36 +66,61 @@ module top_module(
     // --- State Machine Logic ---
     always @(posedge clk_25m) begin
         if (reset) begin
-            current_state <= S_INIT;
+            current_state <= S_NORMAL;
         end else begin
             case (sw)
                 2'b00: current_state <= S_NORMAL;
-                2'b01: current_state <= S_FILTER;
+                2'b01: current_state <= S_GREY;
+		2'b10: current_state <= S_INVERSION;
+		2'b11: current_state <+ S_CISOLATION;
                 default: current_state <= S_NORMAL;
             endcase
         end
     end
 
-    // (จุดที่จะ implement ต่อ)
-    always @(*) begin
-        case (current_state)
-            S_NORMAL: begin
-                r_out = raw_r;
-                g_out = raw_g;
-                b_out = raw_b;
-            end
-            // ทำ Filter
-            S_FILTER: begin
-                r_out = ~raw_r;
-                g_out = ~raw_g;
-                b_out = ~raw_b;
-            end
-            default: begin
-                r_out = raw_r; g_out = raw_g; b_out = raw_b;
-            end
-        endcase
-    end
+    // --- Grayscale Math (Shift-and-Add) ---
+// Zero-extend to 8 bits to preserve precision during division/shifting
+wire [7:0] R_ext = {raw_r, 4'b0000};
+wire [7:0] G_ext = {raw_g, 4'b0000};
+wire [7:0] B_ext = {raw_b, 4'b0000};
 
+// Divide by powers of 2 using right shifts to approximate luminance 
+wire [7:0] Y_calc = (R_ext >> 2) + (R_ext >> 4) + 
+                    (G_ext >> 1) + (G_ext >> 4) + 
+                    (B_ext >> 3);
+
+wire [3:0] gray_val = Y_calc[7:4]; 
+
+always @(*) begin
+    case (current_state)
+        S_NORMAL: begin
+            r_out = raw_r;
+            g_out = raw_g;
+            b_out = raw_b;
+        end
+        S_GREY: begin
+            r_out = gray_val;
+            g_out = gray_val;
+            b_out = gray_val;
+        end
+        S_INVERSION: begin
+            r_out = ~raw_r;
+            g_out = ~raw_g;
+            b_out = ~raw_b;
+        end
+        S_CISOLATION: begin
+            // Isolate Red, force Green and Blue to 0
+            r_out = raw_r;
+            g_out = 4'h0;
+            b_out = 4'h0;
+        end
+        default: begin
+            r_out = raw_r;
+            g_out = raw_g;
+            b_out = raw_b;
+        end
+    endcase
+end
     assign vga_r = r_out;
     assign vga_g = g_out;
     assign vga_b = b_out;

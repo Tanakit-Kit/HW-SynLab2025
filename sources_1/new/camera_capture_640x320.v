@@ -2,7 +2,7 @@ module camera_capture_640x320(
     input pclk, vsync, href,
     input [7:0] d_in,
     output reg [16:0] addr_out,
-    output reg [7:0] data_out,
+    output reg [11:0] data_out,
     output reg write_en
 );
     reg [7:0] b1;
@@ -28,7 +28,7 @@ module camera_capture_640x320(
             end else begin
                 // Downsample: เก็บเฉพาะบรรทัดคู่และพิกเซลคู่ (ย่อ 640x480 -> 320x240)
                 if (line_cnt[0] == 0 && pxl_cnt[0] == 0 && addr_out < 76800) begin
-                    data_out <= {b1[7:5], b1[2:0], d_in[4:3]};
+                    data_out <= {b1[7:4], b1[2:0],d_in[7],d_in[4:1]};
                     write_en <= 1;
                     addr_out <= addr_out + 1;
                 end else begin
