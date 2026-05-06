@@ -79,7 +79,9 @@ set_property IOSTANDARD LVCMOS33 [get_ports -filter { NAME =~  "*ov7670*" }]
 # ใส่ Pull-up ให้สาย I2C/SCCB (สำคัญมาก ถ้าไม่ใส่กล้องจะไม่รับคำสั่งตั้งค่า)
 set_property PULLUP true [get_ports ov7670_sioc]
 set_property PULLUP true [get_ports ov7670_siod]
-
+## Create Clock Constraints
+create_clock -period 10.000 -name sys_clk_pin -waveform {0.000 5.000} -add [get_ports clk_100mhz]
+create_clock -period 40.000 -name cam_clk_pin -waveform {0.000 20.000} -add [get_ports ov7670_pclk]
 ## ------------------------------------------------------------------------
 ## 6. แก้ปัญหา Routing ของ PCLK
 ## ------------------------------------------------------------------------
