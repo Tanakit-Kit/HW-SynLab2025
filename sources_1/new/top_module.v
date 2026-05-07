@@ -29,7 +29,7 @@ module top_module(
     wire clk_25m, clk_24m;
     wire [16:0] frame_addr;
     wire [11:0] pixel_12bit; 
-    wire [17:0] capture_addr;
+    wire [16:0] capture_addr; // [FIXED] ขนาดต้องเป็น 17-bit ให้ตรงกับ capture module
     wire [11:0] capture_data;
     wire capture_we;
     
@@ -51,7 +51,7 @@ module top_module(
 
     frame_buffer_640x320 ram_inst (
         .clk_w(ov7670_pclk), .we(capture_we), .addr_w(capture_addr), .din(capture_data),
-        .clk_r(clk_25m), .addr_r(frame_addr), .dout(pixel_8bit)
+        .clk_r(clk_25m), .addr_r(frame_addr), .dout(pixel_12bit) // [FIXED] แก้จาก pixel_8bit เป็น pixel_12bit
     );
 
 
@@ -72,7 +72,7 @@ module top_module(
                 2'b00: current_state <= S_NORMAL;
                 2'b01: current_state <= S_GREY;
 		2'b10: current_state <= S_INVERSION;
-		2'b11: current_state <+ S_CISOLATION;
+		2'b11: current_state <= S_CISOLATION; // [FIXED] แก้ typo จาก <+ เป็น <=
                 default: current_state <= S_NORMAL;
             endcase
         end

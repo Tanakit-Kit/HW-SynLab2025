@@ -40,6 +40,7 @@ module camera_capture_640x320(
         end else begin
             write_en <= 0;
             pxl_cnt <= 0; // รีเซ็ตตัวนับพิกเซลแนวนอนเมื่อจบบรรทัด
+            byte_sel <= 0; // [CRITICAL FIX] รีเซ็ต byte_sel เพื่อป้องกันสีเพี้ยน (High/Low byte สลับกัน)
             if (old_href == 1 && href == 0) begin 
                 line_cnt <= line_cnt + 1; // ขยับบรรทัดถัดไป
             end
