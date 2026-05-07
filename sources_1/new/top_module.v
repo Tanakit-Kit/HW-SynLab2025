@@ -56,11 +56,13 @@ module top_module(
 
 
     wire [3:0] raw_r, raw_g, raw_b;
+    wire video_active;
     vga_640x320_display vga_inst (
         .clk_25m(clk_25m), .pixel_in(pixel_12bit),
         .hsync(vga_hsync), .vsync(vga_vsync),
         .vga_r(raw_r), .vga_g(raw_g), .vga_b(raw_b),
-        .frame_addr(frame_addr)
+        .frame_addr(frame_addr),
+        .active(video_active)
     );
 
     // --- State Machine Logic ---
@@ -121,8 +123,8 @@ always @(*) begin
         end
     endcase
 end
-    assign vga_r = r_out;
-    assign vga_g = g_out;
-    assign vga_b = b_out;
+    assign vga_r = video_active ? r_out : 4'h0;
+    assign vga_g = video_active ? g_out : 4'h0;
+    assign vga_b = video_active ? b_out : 4'h0;
 
 endmodule

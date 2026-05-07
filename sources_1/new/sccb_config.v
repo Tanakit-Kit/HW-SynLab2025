@@ -23,9 +23,9 @@ module sccb_config(
     // ---------------------------------------------------------
     reg [7:0] reg_idx = 0;      
     reg [15:0] reg_data;        // [15:8] = Sub-address, [7:0] = Write Data
-    wire [7:0] TOTAL_REGS = 8; 
-
-    always @(reg_idx) begin
+    wire [7:0] TOTAL_REGS = 8; // [FIXED] กลับไปใช้ 8 คำสั่งพื้นฐานที่เสถียรที่สุด 
+    
+    always @(*) begin
         case(reg_idx)
             0: reg_data = 16'h1280; // COM7: RESET
             1: reg_data = 16'h1101; // CLKRC: Enable clock prescaler
