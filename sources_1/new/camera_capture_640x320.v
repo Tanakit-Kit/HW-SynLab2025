@@ -1,11 +1,14 @@
 module camera_capture_640x320(
     input pclk, vsync, href,
     input [7:0] d_in,
-    output reg [16:0] addr_out,
-    output reg [11:0] data_out,
-    output reg write_en
+    
+    // [แก้ไขตรงนี้] เติม = 0 ให้กับ output reg ทุกตัว
+    output reg [16:0] addr_out = 0,
+    output reg [11:0] data_out = 0,
+    output reg write_en = 0
 );
-    reg [7:0] b1;
+
+    reg [7:0] b1 = 0;             // เติม = 0
     reg byte_sel = 0;
     reg [9:0] line_cnt = 0;
     reg [9:0] pxl_cnt = 0;
@@ -28,7 +31,7 @@ module camera_capture_640x320(
             end else begin
                 // Downsample: เก็บเฉพาะบรรทัดคู่และพิกเซลคู่ (ย่อ 640x480 -> 320x240)
                 if (line_cnt[0] == 0 && pxl_cnt[0] == 0 && addr_out < 76800) begin
-                    data_out <= {b1[7:4], b1[2:0],d_in[7],d_in[4:1]};
+                    data_out <= {b1[7:4], b1[2:0], d_in[7], d_in[4:1]};
                     write_en <= 1;
                     addr_out <= addr_out + 1;
                 end else begin
@@ -39,10 +42,11 @@ module camera_capture_640x320(
             end
         end else begin
             write_en <= 0;
-            pxl_cnt <= 0; // รีเซ็ตตัวนับพิกเซลแนวนอนเมื่อจบบรรทัด
-            byte_sel <= 0; // [CRITICAL FIX] รีเซ็ต byte_sel เพื่อป้องกันสีเพี้ยน (High/Low byte สลับกัน)
+            pxl_cnt <= 0; 
+            byte_sel <= 0;
+            
             if (old_href == 1 && href == 0) begin 
-                line_cnt <= line_cnt + 1; // ขยับบรรทัดถัดไป
+                line_cnt <= line_cnt + 1;
             end
         end
     end
