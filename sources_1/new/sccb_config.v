@@ -23,10 +23,11 @@ module sccb_config(
     // ---------------------------------------------------------
     reg [7:0] reg_idx = 0;      
     reg [15:0] reg_data;        // [15:8] = Sub-address, [7:0] = Write Data
-    wire [7:0] TOTAL_REGS = 8; // [FIXED] กลับไปใช้ 8 คำสั่งพื้นฐานที่เสถียรที่สุด 
+    wire [7:0] TOTAL_REGS = 16; // [FIXED] เพิ่มกลุ่ม Register ตามคำแนะนำของผู้เชี่ยวชาญ (ตัดกลุ่มที่เคยทำกล้องค้างทิ้ง)
     
     always @(*) begin
         case(reg_idx)
+            // --- พื้นฐาน (ห้ามแก้) ---
             0: reg_data = 16'h1280; // COM7: RESET
             1: reg_data = 16'h1101; // CLKRC: Enable clock prescaler
             2: reg_data = 16'h6B4A; // DBLV: Stabilize PLL clock
@@ -35,6 +36,18 @@ module sccb_config(
             5: reg_data = 16'h40D0; // COM15: RGB565 Full range
             6: reg_data = 16'h3A04; // TSLB
             7: reg_data = 16'hB084; // Magic Register
+            // --- Fine Tuning เรื่องสี (ปลอดภัย) ---
+            8: reg_data = 16'h3DC0; // COM13: เปิดใช้งาน Gamma และ Auto UV Saturation
+            9: reg_data = 16'hC9F0; // SATCTR: เร่งความสดของสี (Saturation) ขึ้นไปสูงสุด
+            // --- [NEW] Group 1: AWB ---
+            10: reg_data = 16'h6F9F; // AWBCTR0: บังคับเปิด Advanced AWB และเพิ่มเพดาน Color Gain เป็น 4x
+            // --- [NEW] Group 2: Signal & Noise ---
+            11: reg_data = 16'h0901; // COM2: ลด Drive Current เหลือ 1x เพื่อลดสัญญาณรบกวนข้ามขั้ว (Crosstalk)
+            // --- [NEW] Group 5: AGC & Banding Filter (ป้องกันภาพกะพริบและ Noise) ---
+            12: reg_data = 16'h1418; // COM9: จำกัดเพดาน AGC ไว้ที่ 4x ป้องกัน Noise ในที่มืด
+            13: reg_data = 16'h13E5; // COM8: เปิด Fast AGC/AEC, AWB และ Banding Filter
+            14: reg_data = 16'hA505; // BD50MAX: ตั้งค่า Banding Filter สำหรับความถี่ไฟ 50Hz
+            15: reg_data = 16'hAB07; // BD60MAX: ตั้งค่า Banding Filter สำหรับความถี่ไฟ 60Hz
             default: reg_data = 16'hFFFF;
         endcase
     end
